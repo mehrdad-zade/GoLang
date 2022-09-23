@@ -1,3 +1,6 @@
+// GoLang learning material .. README
+// CREDIT: https://www.youtube.com/watch?v=YS4e4q9oBaU&ab_channel=freeCodeCamp.org
+
 package main
 
 /*
@@ -14,7 +17,7 @@ import (
 )
 
 var x int = 2
-var DescriptiveName string = "loyal"
+var DescriptiveName string = "loyal" //global and exportable var, due to capitalized first letter
 
 func main() {
 	i := 1
@@ -33,7 +36,7 @@ func main() {
 	fmt.Println(x << 3) // x * 2^3
 	fmt.Println(x >> 3) // x / 2^3
 
-	//----------------------------------------------------
+	//----------------------------------------------------Constant
 	//constants: naming conventiosn are like vars; camel-casing. in case they should be exported, first char will be capitalized like vars
 	//cannot initialize const with something that should be determined in run-time; such as a method. i.e this is not accepted: const c := math.sin(2)
 	const myConst int = 100
@@ -107,7 +110,7 @@ func main() {
 	fmt.Println("Empty map: ", myMap2)
 
 	myMap := map[string]int{
-		"key1": 10, //break is implied. if you need fallthrough, it has to be explicitly added, but it will avoid the condition. 
+		"key1": 10, //break is implied. if you need fallthrough, it has to be explicitly added, but it will avoid the condition.
 		"key2": 20,
 		"key3": 30,
 	}
@@ -203,16 +206,16 @@ func main() {
 		fmt.Println("typ is float32")
 	case bool:
 		fmt.Println("typ is bool")
-	}	
-	
+	}
+
 	//----------------------------------------------------Loop
-	for k:=0; k<10; k++ {
+	for k := 0; k < 10; k++ {
 		fmt.Println("loop: ", k)
 	}
 
 	//scope of vars in a loop
 	p := 0
-	for ; p<10; p++{
+	for ; p < 10; p++ {
 		if p == 9 {
 			break
 		}
@@ -221,13 +224,11 @@ func main() {
 
 	//loop through maps and slices/arrays
 	for k, v := range gradeSlice {
-		fmt.Println(k,v)
+		fmt.Println(k, v)
 	}
 	for k, v := range myMap {
-		fmt.Println(k,v)
+		fmt.Println(k, v)
 	}
-
-
 
 	//----------------------------------------------------Defer, Panic and Recover
 	//Defer: parameters passed to a defered line, are the ones that are passed to it sequentially, not the final value of such params/args
@@ -242,7 +243,7 @@ func main() {
 	}
 	defer res.Body.Close() //good option to be defered when there a re a few statements for res. without "defer" keyword in this line, this piece will fail because we closed res before reading it
 
-	robots, err := ioutil.ReadAll(res.Body)	
+	robots, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -258,16 +259,37 @@ func main() {
 	if denom == 0 {
 		fmt.Println("--------------------------")
 		panic("Division by zero! -- " + err.Error())
-	}else {
-		fmt.Println(nom/denom)
+	} else {
+		fmt.Println(nom / denom)
 	}
 
-	//----------------------------------------------------simple web app
+	//----------------------------------------------------Pointers
+	//Pointer arithmatic is not supported in Go; i.e. b := &a - 4. Uninitialized pointers are nil, make sure to check pointers.
+	var q1 int = 10
+	var q2 *int = &q1 // "*" means that we are pointing to a reference of an int
+	fmt.Println("pointers: ", q1, *q2)
+	q1 = 20
+	fmt.Println("pointers: ", q1, *q2)
+	*q2 = 30
+	fmt.Println("pointers: ", q1, *q2)
+
+	var ms *Bird
+	fmt.Println(ms.name) // compiler understands that ms is trying to access the underlying struct
+
+	//----------------------------------------------------Simple Web App
+	fmt.Println("-------SERVER IS Up-------")
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Go Says Hi.."))
+
+		//time.Sleep(2 * time.Second)
+		//codeCh := r.URL.Query().Get("code") // a way to read request params
+		//os.Exit(400)
 	})
-	err = http.ListenAndServe(":8000", nil)
+
+	err = http.ListenAndServe(":8000", nil) // if you run the app while port 8000 is occupied you get panic
 	if err != nil {
 		panic(err.Error())
 	}
+	//----------------------------------------------------
+
 }
