@@ -26,6 +26,15 @@ func main() {
 
 	divRes, err := myDiv(5, 0)
 	fmt.Printf("get multiple returns: %v, %v\n", divRes, err)
+
+	//dealing with methods
+
+	g := greeter {
+		name : "me",
+		greet : "hi",
+	}
+	g.getGreet()
+
 }
 
 // ----------------------------------------------------Functions
@@ -61,4 +70,16 @@ func myDiv(x, y float64) (float64, error) {
 		return 0.0, fmt.Errorf("Denom is zero, cannot complete the devision")
 	}
 	return x / y, nil
+}
+
+
+// ----------------------------------------------------Methods
+//Methods are similar to functions, however, a datatype gets context
+type greeter struct {
+	name string
+	greet string
+
+}
+func (g greeter) getGreet() {
+	fmt.Println("Methods: ", g.name, g.greet)
 }
