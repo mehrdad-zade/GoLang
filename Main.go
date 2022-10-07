@@ -2,87 +2,125 @@
 // CREDIT: https://www.youtube.com/watch?v=YS4e4q9oBaU&ab_channel=freeCodeCamp.org
 
 /*
-*
-GoRoutines: allows us to work on multiple things concurrently.
-GoLang enables an abstract light weight thread on OS level, which
-is useful because you can define thousands of routines without much
-overhead that other languages such as Java or C# create.
-by marking a method with keyword "go" you have a routine.
+concurrency and parallelism are core to GoLang. Channels synchronize data transmission between multiple routines. If
+we are working with unbuffered channels, then we need to have a receiver for every sender.
 */
 package main
 
 import (
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 )
 
-var wg = sync.WaitGroup{} // designed to synch multiple go routines together
-var counter = 0
+var wg = sync.WaitGroup{}
 
-// Example 4
-var m = sync.RWMutex{} // mutext is a lock to make sure resources are used the way we want. RWMutext ensures that as many threads as we want can read this source, but as long as reading we cannot write to it
+// Example 5
+type logEntry struct {
+	time     time.Time
+	severity string
+	message  string
+}
+
+var logCH = make(chan logEntry, 50)
+var doneCH = make(chan struct{}) // the common way to use a channel for ending a routin that is infinitly looping over a channel
+
+const (
+	logInfo     = " INFO "
+	logWarnning = " WARNING "
+	logError    = " ERROR "
+)
 
 func main() {
-	//Example 1 - Go Routine allows closure access to varibales, which is not a good practice, because go routine and the var will be on different stack traces that could create unexpected behaviours
-	msg := "hello"
+	//Example 1 - create a channel with make function
+	fmt.Println("--Example1:")
+	ch := make(chan int) // data type int will fllow into the channel. this is strongly typed, so only int can go through
+	wg.Add(2)
 	go func() {
-		fmt.Println("--Example1: ", msg) //the routine can understand what msg is refered to, although the routine and the var are on different stack traces
+		i := <-ch // receiving data from the channel
+		fmt.Println(i)
+		wg.Done()
 	}()
-	msg = "goodbye"                    //the routine will usually pick this value, but that's not guaranteed because the routine and this var are on different stack traces
-	time.Sleep(100 * time.Microsecond) //without this you don't give enough time to the OS scheduler to print the value of the routine. But this is a bad practice (because we are binding the application clock cycle with the real world clock which is unreliable) and used for demo only
-	// to see the race condition clearly you can run the app like this: go run -race Main.go. this will return a DATA RACE message indicating that a routine (which is our func) has accessed a memory (our msg var) twice
-
-	//Example 2 - if you pass the var as an arg to the routine, it will use the value at the time the routine was scheduled on the OS
-	msg = "hello"
-	go func(msg string) {
-		fmt.Println("--Example2: ", msg)
-	}(msg)
-	msg = "goodbye"
-	time.Sleep(100 * time.Microsecond)
-
-	//Example 3 - run multiple go routines. you can see there is no synchronization between the routines. the two methods race against each other to get their work done
-	fmt.Println("--Example3:")
-	for i := 0; i < 10; i++ {
-		wg.Add(2) // add two routines to the OS scheduler threads
-		go sayHello()
-		go increment()
-	}
-	wg.Wait() // wait for the results
-
-	//Example 4 - use of mutext for managig resources access by each thread. this is basically destroying the use of parallelism; in fact the performanceo of running this without routines is higher (just a demo for mutext)
-	counter = 0
-	fmt.Println("--Example4:")
-	for i := 0; i < 10; i++ {
-		wg.Add(2)
-		m.RLock()
-		go sayHello2()
-		m.Lock()
-		go increment2()
-	}
-	fmt.Println("Number of threads CPU has made available to the OS = ", runtime.GOMAXPROCS(-1)) // see the max num of threads available with param "-1". if you want to limit the number of threads use a positive int as a statement; i.e. runtime.GOMAXPROCS(1)
+	go func() {
+		ch <- 42 // sending data to the channel
+		wg.Done()
+	}()
 	wg.Wait()
+
+	//Example 2: two routines, each acting as both sender and receiver. usually each routine will only do either though
+	fmt.Println("--Example2:")
+	wg.Add(2)
+	go func() {
+		i := <-ch // sender
+		fmt.Println(i)
+		ch <- 27 // receiver
+		wg.Done()
+	}()
+	go func() {
+		ch <- 42          // receiver
+		fmt.Println(<-ch) //sender
+		wg.Done()
+	}()
+	wg.Wait()
+
+	//Example 3: A way to make the routine a sender-only and receiver-only is by passing the channel parameter in the way expected
+	fmt.Println("--Example3:")
+	wg.Add(2)
+	go func(ch <-chan int) { // ch is bound to send int only; cannot be a sender
+		i := <-ch // receiver
+		fmt.Println(i)
+		//ch <- 27 // sender is not allowed
+		wg.Done()
+	}(ch)
+	go func(ch chan<- int) { // ch can only receive int; cannot send
+		ch <- 42 // sender
+		//fmt.Println(<-ch) //receiver is not allowed
+		wg.Done()
+	}(ch)
+	wg.Wait()
+
+	//Example 4: Buffered channels: sometimes your sender routine geenrates data faster than receiver-routine can consume because it might be busy processing them. As we know
+	//we should have a receiver for every sender, so in such cases we need to have a buffered channel. With buffered channels, if we have less receivers, it will only be able
+	//handle the messages in a FIFO manner, and the remaining will be lost. The workaround/solution is to have a loop on the receiver side, and close the channel on the sender.
+	fmt.Println("--Example4:")
+	bufferedCH := make(chan int, 50)
+	wg.Add(2)
+	go func(bufferedCH <-chan int) {
+		for i := range bufferedCH { // pay attention to i. it's not an index, it's the actual value send to ch
+			fmt.Println(i)
+		}
+		wg.Done()
+	}(bufferedCH)
+	go func(bufferedCH chan<- int) {
+		bufferedCH <- 1
+		bufferedCH <- 2
+		bufferedCH <- 3
+		bufferedCH <- 4
+		bufferedCH <- 50  // send as many data as the buffer size
+		close(bufferedCH) // make sure to close the ch, otherwise the for loop above won't know we are done sending. Also make sure not to send a msg to a closed channel.
+		wg.Done()
+	}(bufferedCH)
+	wg.Wait()
+
+	//Example 5: a coomon way to keep the channel running and waiting on data, but to close it properly when we are done
+	fmt.Println("--Example 5:")
+	go logger()
+	logCH <- logEntry{time.Now(), logInfo, " - App is starting"}
+
+	logCH <- logEntry{time.Now(), logInfo, " - App is shutting down"}
+	time.Sleep(100 * time.Millisecond)
+	doneCH <- struct{}{} //breaking out of the logger for loop. when the selectblock (listener of the logger func) receives this instruction, it will terminate the listener/loop/routine
 }
 
-// Example 3
-func sayHello() {
-	fmt.Printf("Hello #%v\n", counter)
-	wg.Done() // tell the weight group that are routine is done
-}
-func increment() {
-	counter++
-	wg.Done()
-}
-
-// Example 4
-func sayHello2() {
-	fmt.Printf("Hello #%v\n", counter)
-	m.RUnlock()
-	wg.Done() // tell the weight group that are routine is done
-}
-func increment2() {
-	counter++
-	m.Unlock()
-	wg.Done()
+// Example 5
+func logger() {
+	for {
+		select { // this acts like a listener waiting for a message to be received by either of the channels
+		case entry := <-logCH:
+			fmt.Printf("%v - [%v]%v\n", entry.time.Format("2006-01-02T15:04:05"), entry.severity, entry.message)
+		case <-doneCH:
+			break
+			// you can use a default too, if you want to run some logic when you haven't received any messages by either of the channels
+		}
+	}
 }
