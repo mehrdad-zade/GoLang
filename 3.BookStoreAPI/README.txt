@@ -7,10 +7,10 @@ Book Store app API:
 - Gorilla Mux
 
 Packages:
-- go mod init github.com/mehrdad-zade/GoLang/3.BookStoreAPI
+- //go mod init in the root project.
 - go get "github.com/jinzhu/gorm"
 - go get "github.com/jinzhu/gorm/dialects/mysql"
-- go get "github.com/gorilla/mux" 
+- go get "github.com/gorilla/mux"
 
 
 Note:
