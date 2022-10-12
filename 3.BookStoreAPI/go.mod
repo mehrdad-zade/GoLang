@@ -1,4 +1,4 @@
-module bookStore
+module github.com/mehrdad-zade/GoLang/3.BookStoreAPI
 
 go 1.19
 
